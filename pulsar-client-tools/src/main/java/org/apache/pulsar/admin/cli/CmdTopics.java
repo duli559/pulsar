@@ -82,6 +82,7 @@ public class CmdTopics extends CmdBase {
         jcommander.addCommand("expire-messages-all-subscriptions", new ExpireMessagesForAllSubscriptions());
 
         jcommander.addCommand("create-partitioned-topic", new CreatePartitionedCmd());
+        jcommander.addCommand("create-missed-partitions", new CreateMissedPartitionsCmd());
         jcommander.addCommand("create", new CreateNonPartitionedCmd());
         jcommander.addCommand("update-partitioned-topic", new UpdatePartitionedCmd());
         jcommander.addCommand("get-partitioned-topic-metadata", new GetPartitionedTopicMetadataCmd());
@@ -214,6 +215,21 @@ public class CmdTopics extends CmdBase {
         }
     }
 
+    @Parameters(commandDescription = "Try to create partitions for partitioned topic. \n"
+            + "\t\t     The partitions of partition topic has to be created, can be used by repair partitions when \n"
+            + "\t\t     topic auto creation is disabled")
+    private class CreateMissedPartitionsCmd extends CliCommand {
+
+        @Parameter(description = "persistent://tenant/namespace/topic\n", required = true)
+        private java.util.List<String> params;
+
+        @Override
+        void run() throws Exception {
+            String topic = validateTopicName(params);
+            topics.createMissedPartitions(topic);
+        }
+    }
+
     @Parameters(commandDescription = "Create a non-partitioned topic.")
     private class CreateNonPartitionedCmd extends CliCommand {
     	
@@ -338,13 +354,17 @@ public class CmdTopics extends CmdBase {
         @Parameter(description = "persistent://tenant/namespace/topic", required = true)
         private java.util.List<String> params;
 
+        @Parameter(names = { "-f",
+            "--force" }, description = "Disconnect and close all consumers and delete subscription forcefully")
+        private boolean force = false;
+
         @Parameter(names = { "-s", "--subscription" }, description = "Subscription to be deleted", required = true)
         private String subName;
 
         @Override
         void run() throws PulsarAdminException {
             String topic = validateTopicName(params);
-            topics.deleteSubscription(topic, subName);
+            topics.deleteSubscription(topic, subName, force);
         }
     }
 
@@ -354,10 +374,14 @@ public class CmdTopics extends CmdBase {
         @Parameter(description = "persistent://tenant/namespace/topic\n", required = true)
         private java.util.List<String> params;
 
+        @Parameter(names = { "-gpb",
+            "--get-precise-backlog" }, description = "Set true to get precise backlog")
+        private boolean getPreciseBacklog = false;
+
         @Override
         void run() throws PulsarAdminException {
             String topic = validateTopicName(params);
-            print(topics.getStats(topic));
+            print(topics.getStats(topic, getPreciseBacklog));
         }
     }
 
@@ -396,10 +420,14 @@ public class CmdTopics extends CmdBase {
         @Parameter(names = "--per-partition", description = "Get per partition stats")
         private boolean perPartition = false;
 
+        @Parameter(names = { "-gpb",
+            "--get-precise-backlog" }, description = "Set true to get precise backlog")
+        private boolean getPreciseBacklog = false;
+
         @Override
         void run() throws Exception {
             String topic = validateTopicName(params);
-            print(topics.getPartitionedStats(topic, perPartition));
+            print(topics.getPartitionedStats(topic, perPartition, getPreciseBacklog));
         }
     }
 
